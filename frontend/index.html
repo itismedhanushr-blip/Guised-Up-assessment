@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guised Up - Real Connections Feed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #020617;
+      color: #F8FAFC;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React & Babel Standalone for Seamless Direct Preview -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    const API_BASE_URL = 'http://localhost:8010/api';
+
+    // API Helpers
+    async function fetchFeed(page = 1, limit = 20) {
+      const res = await fetch(`${API_BASE_URL}/feed?page=${page}&limit=${limit}`);
+      return await res.json();
+    }
+
+    async function searchPosts(query) {
+      const res = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
+      return await res.json();
+    }
+
+    async function createPost(data) {
+      const res = await fetch(`${API_BASE_URL}/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return await res.json();
+    }
+
+    async function logInteraction(postId, type = 'reaction') {
+      const res = await fetch(`${API_BASE_URL}/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_id: postId, type }),
+      });
+      return await res.json();
+    }
+
+    // SearchHeader Component
+    function SearchHeader({ searchQuery, setSearchQuery, onSearch, onClearSearch, isSearching }) {
+      return (
+        <div style={styles.searchHeader}>
+          <div style={styles.titleRow}>
+            <div style={styles.brandBadge}>
+              <span style={styles.brandDot}></span>
+              <span style={styles.brandName}>Guised Up</span>
+            </div>
+            <div style={styles.tagline}>Real Connections Feed</div>
+          </div>
+
+          <div style={styles.searchBox}>
+            <span style={{ fontSize: '14px', marginRight: '8px' }}>🔍</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+              placeholder="Natural language search (e.g. 'funny travel stories')..."
+              style={styles.searchInput}
+            />
+            {searchQuery && (
+              <button onClick={onClearSearch} style={styles.clearBtn}>✕</button>
+            )}
+            <button
+              onClick={onSearch}
+              disabled={isSearching || !searchQuery.trim()}
+              style={{
+                ...styles.searchBtn,
+                opacity: (!searchQuery.trim() || isSearching) ? 0.5 : 1
+              }}
+            >
+              {isSearching ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+          <div style={styles.hintText}>✨ 384-d vector embeddings & cosine similarity</div>
+        </div>
+      );
+    }
+
+    // PostCard Component
+    function PostCard({ post, onReact }) {
+      const [reacted, setReacted] = useState(false);
+      const [reactionCount, setReactionCount] = useState(post.reaction_count || 0);
+
+      const handleReaction = () => {
+        if (!reacted) {
+          setReacted(true);
+          setReactionCount(prev => prev + 1);
+          onReact(post.id, 'reaction');
+        } else {
+          setReacted(false);
+          setReactionCount(prev => Math.max(0, prev - 1));
+          onReact(post.id, 'unreaction');
+        }
+      };
+
+      const score = post.authenticity_score || 0.90;
+      let badge = { text: `🌿 High Authenticity ${(score * 100).toFixed(0)}%`, bg: '#064E3B', color: '#34D399' };
+      if (score < 0.60) {
+        badge = { text: `⚠️ Highly Filtered ${(score * 100).toFixed(0)}%`, bg: '#451A03', color: '#FDBA74' };
+      }
+
+      return (
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <div style={styles.authorGroup}>
+              <img
+                src={post.author?.avatar_url || `https://i.pravatar.cc/150?u=${post.id}`}
+                alt={post.author?.name}
+                style={styles.avatar}
+              />
+              <div>
+                <div style={styles.authorName}>{post.author?.name || 'Anonymous User'}</div>
+                <div style={styles.timeAgo}>{post.time_ago || 'Recently'}</div>
+              </div>
+            </div>
+            <div style={{ ...styles.badge, backgroundColor: badge.bg, color: badge.color }}>
+              {badge.text}
+            </div>
+          </div>
+
+          <div style={styles.postText}>{post.text}</div>
+
+          {post.image_url && (
+            <div style={styles.imageWrap}>
+              <img
+                src={post.image_url}
+                alt="Post content"
+                style={styles.postImg}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800';
+                }}
+              />
+            </div>
+          )}
+
+          {post.final_rank_score !== undefined && (
+            <div style={styles.scoreRow}>
+              <span>📊 Rank Score: <strong>{post.final_rank_score}</strong></span>
+              {post.similarity_score !== undefined ? (
+                <span> 🎯 Vector Sim: <strong>{(post.similarity_score * 100).toFixed(1)}%</strong></span>
+              ) : (
+                <span> 🤝 Relationship: <strong>{((post.relationship_score || 0) * 100).toFixed(0)}%</strong></span>
+              )}
+            </div>
+          )}
+
+          <div style={styles.cardFooter}>
+            <button
+              onClick={handleReaction}
+              style={{
+                ...styles.actionBtn,
+                backgroundColor: reacted ? '#312E81' : '#1E293B',
+                color: reacted ? '#818CF8' : '#94A3B8',
+                borderColor: reacted ? '#6366F1' : '#334155',
+              }}
+            >
+              <span>{reacted ? '❤️' : '🤍'}</span>
+              <span>{reacted ? 'Reacted' : 'React'} ({reactionCount})</span>
+            </button>
+            <div style={{ marginLeft: 'auto', fontSize: '12px', color: '#64748B' }}>
+              👁️ {post.view_count || 0} views
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Main Feed Screen App
+    function App() {
+      const [posts, setPosts] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [isSearching, setIsSearching] = useState(false);
+      const [searchResults, setSearchResults] = useState(null);
+
+      const [showModal, setShowModal] = useState(false);
+      const [newText, setNewText] = useState('');
+      const [newImage, setNewImage] = useState('');
+      const [filterApplied, setFilterApplied] = useState(false);
+
+      const loadFeed = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const res = await fetchFeed(1, 20);
+          if (res && res.data) setPosts(res.data);
+        } catch (err) {
+          setError('Backend server offline. Run "npm start" in /backend directory.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadFeed();
+      }, []);
+
+      const handleSearch = async () => {
+        if (!searchQuery.trim()) return;
+        try {
+          setIsSearching(true);
+          const res = await searchPosts(searchQuery.trim());
+          if (res && res.data) setSearchResults(res.data);
+        } catch (err) {
+          alert('Vector search failed. Ensure API server is running.');
+        } finally {
+          setIsSearching(false);
+        }
+      };
+
+      const handleClearSearch = () => {
+        setSearchQuery('');
+        setSearchResults(null);
+      };
+
+      const handlePublish = async (e) => {
+        e.preventDefault();
+        if (!newText.trim()) return;
+        try {
+          let img = newImage.trim();
+          if (img && !img.startsWith('http://') && !img.startsWith('https://')) {
+            img = 'https://' + img;
+          }
+
+          await createPost({
+            text: newText.trim(),
+            image_url: img || null,
+            filter_applied: filterApplied,
+          });
+
+          setNewText('');
+          setNewImage('');
+          setFilterApplied(false);
+          setShowModal(false);
+
+          // Clear search mode if active so the user returns to main feed
+          setSearchQuery('');
+          setSearchResults(null);
+
+          // Reload feed to show newly published post at the top
+          await loadFeed();
+        } catch (err) {
+          alert('Failed to publish post. Check backend server.');
+        }
+      };
+
+      const displayList = searchResults !== null ? searchResults : posts;
+
+      return (
+        <div style={styles.appContainer}>
+          <div style={styles.phoneFrame}>
+            <SearchHeader
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onSearch={handleSearch}
+              onClearSearch={handleClearSearch}
+              isSearching={isSearching}
+            />
+
+            {searchResults !== null && (
+              <div style={styles.searchBanner}>
+                <span>🔍 Vector Results for "{searchQuery}"</span>
+                <button onClick={handleClearSearch} style={styles.bannerClose}>Reset Feed</button>
+              </div>
+            )}
+
+            <div style={styles.createBar}>
+              <button onClick={() => setShowModal(true)} style={styles.createBtn}>
+                ✏️ Share an Authentic Post...
+              </button>
+            </div>
+
+            <div style={styles.feedBody}>
+              {loading && (
+                <div style={styles.centerBox}>
+                  <div style={styles.spinner}></div>
+                  <p>Ranking feed using authenticity & 384-d embeddings...</p>
+                </div>
+              )}
+
+              {error && (
+                <div style={styles.errorBox}>
+                  <h3>Backend Status Notice</h3>
+                  <p>{error}</p>
+                  <button onClick={loadFeed} style={styles.retryBtn}>Retry Connection</button>
+                </div>
+              )}
+
+              {!loading && !error && displayList.length === 0 && (
+                <div style={styles.centerBox}>
+                  <h3>No Posts Found</h3>
+                  <p>Try searching for different terms or publish a post.</p>
+                </div>
+              )}
+
+              {!loading && displayList.map(post => (
+                <PostCard key={post.id} post={post} onReact={(id, type) => logInteraction(id, type)} />
+              ))}
+            </div>
+          </div>
+
+          {showModal && (
+            <div style={styles.modalOverlay}>
+              <div style={styles.modalContent}>
+                <h3 style={{ marginBottom: '16px', color: '#F8FAFC' }}>New Authentic Post</h3>
+                <form onSubmit={handlePublish}>
+                  <textarea
+                    value={newText}
+                    onChange={e => setNewText(e.target.value)}
+                    placeholder="What's really on your mind? (Unfiltered text ranks higher)..."
+                    rows={4}
+                    style={styles.modalTextarea}
+                    required
+                  />
+                  <input
+                    type="url"
+                    value={newImage}
+                    onChange={e => setNewImage(e.target.value)}
+                    placeholder="Optional image URL"
+                    style={styles.modalInput}
+                  />
+                  <label style={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={filterApplied}
+                      onChange={e => setFilterApplied(e.target.checked)}
+                    />
+                    <span style={{ color: filterApplied ? '#FDBA74' : '#94A3B8' }}>
+                      {filterApplied ? '⚠️ Heavy image filter applied' : '🌿 Raw, unfiltered post'}
+                    </span>
+                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+                    <button type="button" onClick={() => setShowModal(false)} style={styles.cancelBtn}>Cancel</button>
+                    <button type="submit" style={styles.submitBtn}>Publish Post</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const styles = {
+      appContainer: { display: 'flex', justifyContent: 'center', backgroundColor: '#020617', minHeight: '100vh' },
+      phoneFrame: { width: '100%', maxWidth: '480px', backgroundColor: '#090D16', minHeight: '100vh', borderLeft: '1px solid #1E293B', borderRight: '1px solid #1E293B' },
+      searchHeader: { padding: '16px 20px', backgroundColor: '#0F172A', borderBottom: '1px solid #1E293B', position: 'sticky', top: 0, zIndex: 10 },
+      titleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+      brandBadge: { display: 'flex', alignItems: 'center', gap: '8px' },
+      brandDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981', boxShadow: '0 0 8px #10B981' },
+      brandName: { fontSize: '18px', fontWeight: '800', color: '#F8FAFC' },
+      tagline: { fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' },
+      searchBox: { display: 'flex', alignItems: 'center', backgroundColor: '#1E293B', borderRadius: '10px', padding: '4px 8px 4px 12px', border: '1px solid #334155' },
+      searchInput: { flex: 1, background: 'none', border: 'none', color: '#F8FAFC', padding: '8px 0', fontSize: '13px', outline: 'none' },
+      clearBtn: { background: 'none', border: 'none', color: '#94A3B8', padding: '0 6px', cursor: 'pointer' },
+      searchBtn: { backgroundColor: '#6366F1', color: '#FFF', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+      hintText: { marginTop: '6px', fontSize: '10px', color: '#64748B', textAlign: 'right' },
+      searchBanner: { backgroundColor: '#1E1B4B', color: '#A5B4FC', padding: '8px 16px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+      bannerClose: { background: 'none', border: '1px solid #4338CA', color: '#C7D2FE', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', cursor: 'pointer' },
+      createBar: { padding: '12px 16px', backgroundColor: '#0F172A', borderBottom: '1px solid #1E293B' },
+      createBtn: { width: '100%', backgroundColor: '#1E293B', color: '#94A3B8', border: '1px dashed #334155', borderRadius: '10px', padding: '10px 14px', textAlign: 'left', fontSize: '13px', cursor: 'pointer' },
+      feedBody: { padding: '16px' },
+      card: { backgroundColor: '#0F172A', borderRadius: '14px', padding: '16px', marginBottom: '16px', border: '1px solid #1E293B' },
+      cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' },
+      authorGroup: { display: 'flex', alignItems: 'center', gap: '10px' },
+      avatar: { width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #334155' },
+      authorName: { fontSize: '14px', fontWeight: '700', color: '#F8FAFC' },
+      timeAgo: { fontSize: '11px', color: '#64748B' },
+      badge: { padding: '3px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: '600' },
+      postText: { fontSize: '14px', lineHeight: '1.5', color: '#E2E8F0', marginBottom: '10px' },
+      imageWrap: { marginBottom: '10px', borderRadius: '10px', overflow: 'hidden', maxHeight: '280px' },
+      postImg: { width: '100%', height: '100%', objectFit: 'cover' },
+      scoreRow: { backgroundColor: '#1E293B', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', color: '#94A3B8', marginBottom: '10px', display: 'flex', gap: '10px' },
+      cardFooter: { display: 'flex', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid #1E293B' },
+      actionBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '16px', border: '1px solid', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+      centerBox: { padding: '40px 20px', textAlign: 'center', color: '#94A3B8' },
+      spinner: { width: '24px', height: '24px', border: '2px solid #1E293B', borderTop: '2px solid #6366F1', borderRadius: '50%', margin: '0 auto 12px auto', animation: 'spin 1s linear infinite' },
+      errorBox: { backgroundColor: '#451A03', border: '1px solid #78350F', borderRadius: '12px', padding: '16px', textAlign: 'center', color: '#FDBA74' },
+      retryBtn: { marginTop: '10px', backgroundColor: '#78350F', color: '#FFF', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' },
+      modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+      modalContent: { backgroundColor: '#0F172A', borderRadius: '16px', width: '90%', maxWidth: '420px', padding: '20px', border: '1px solid #1E293B' },
+      modalTextarea: { width: '100%', backgroundColor: '#1E293B', border: '1px solid #334155', borderRadius: '8px', padding: '10px', color: '#FFF', fontSize: '13px', outline: 'none', marginBottom: '10px' },
+      modalInput: { width: '100%', backgroundColor: '#1E293B', border: '1px solid #334155', borderRadius: '8px', padding: '8px 10px', color: '#FFF', fontSize: '12px', outline: 'none', marginBottom: '10px' },
+      checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' },
+      cancelBtn: { backgroundColor: 'transparent', color: '#94A3B8', border: '1px solid #334155', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', cursor: 'pointer' },
+      submitBtn: { backgroundColor: '#6366F1', color: '#FFF', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

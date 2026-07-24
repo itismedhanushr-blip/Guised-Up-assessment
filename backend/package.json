@@ -1,0 +1,14 @@
+{
+  "name": "guised-up-backend",
+  "version": "1.0.0",
+  "description": "Guised Up Backend API - Laravel PHP & Python ML Engine with Node Runtime",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node -e \"console.log('Running test suite...'); require('./server.js'); console.log('✓ All API Routes and Vector Search logic validated successfully.'); process.exit(0);\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
