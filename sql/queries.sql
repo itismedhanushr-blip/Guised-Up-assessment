@@ -1,5 +1,5 @@
 -- =============================================================================
--- Guised Up - Technical Take-Home Project: Part D (SQL Challenge)
+-- Guised Up - 
 -- File: /sql/queries.sql
 -- Description: Optimized raw SQL queries for feed analytics and moderation
 -- =============================================================================
@@ -31,10 +31,8 @@ LIMIT 10;
 
 
 -- -----------------------------------------------------------------------------
--- D2: Posts from Most Interacted Users for a Given Target User
--- Requirement: For a given user_id (e.g. :target_user_id), return all posts
---              from users they interact with most, ordered by interaction
---              frequency descending, limited to posts from the last 30 days.
+-- Posts from Most Interacted Users for a Given Target User
+-- Requirement: For a given user_id (e.g. :target_user_id),.
 -- -----------------------------------------------------------------------------
 WITH TopInteractedAuthors AS (
     SELECT 
@@ -76,8 +74,7 @@ ORDER BY
 
 -- -----------------------------------------------------------------------------
 -- D3: Posts Viewed > 100 Times with Zero Reactions
--- Requirement: Find any posts that have been viewed more than 100 times but
---              have zero reactions. Return post_id, author_id, view_count, created_at.
+--  Find any posts that have been viewed more than 100 times but have zero reactions. Return post_id, author_id, view_count, created_at.
 -- -----------------------------------------------------------------------------
 SELECT 
     p.id AS post_id,
@@ -100,9 +97,7 @@ ORDER BY
 
 -- -----------------------------------------------------------------------------
 -- D4: Spam Detection Query (> 20 Posts in the Last 24 Hours)
--- Requirement: Write a query that would help detect potential spam — users
---              who have created more than 20 posts in the last 24 hours.
---              Include their email and post count.
+-- Requirement: Write a query that would help detect potential spam — users who have created more than 20 posts in the last 24 hours.
 -- -----------------------------------------------------------------------------
 SELECT 
     u.id AS user_id,
