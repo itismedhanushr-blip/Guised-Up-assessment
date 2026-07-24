@@ -78,3 +78,6 @@ Open `frontend/index.html` in your web browser
 4. **Publish Post**
 
 ---
+
+
+![image](https://github.com/itismedhanushr-blip/Guised-Up-assessment/blob/master/WhatsApp%20Image%202026-07-15%20at%204.10.24%20PM.jpeg?raw=true)
