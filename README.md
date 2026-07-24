@@ -1,3 +1,4 @@
+![image](https://github.com/itismedhanushr-blip/Guised-Up-assessment/blob/master/collage.png?raw=true)
 # Guised Up — Technical Take-Home Project
 
 **Role**: Full-Stack Developer Assessment  
