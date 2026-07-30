@@ -72,11 +72,9 @@ To launch and test the Feed Screen interactively in your browser:
 
 Open `frontend/index.html` in your web browser
 
-#### Features to test on the Feed Screen:
-1. **Personalized Feed**
-2. **Natural Language Semantic Search**
-3. **Interactive Reaction Button**
-4. **Publish Post**
+```bash
+Start-Process "C:\Users\Admin\guised-up-assessment\frontend\index.html"
+```
 
 ---
 
